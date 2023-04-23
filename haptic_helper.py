@@ -29,4 +29,5 @@ def normalize_vector(vector):
     x, y = vector[0], vector[1]
     magnitude = math.sqrt(x**2 + y**2)
     normalized_vector = [x/magnitude, y/magnitude]
-    return normalized_vector    
+    round_vector = [round(nv, 3) for nv in normalized_vector]
+    return round_vector    

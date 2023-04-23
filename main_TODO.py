@@ -27,9 +27,9 @@ class Player(pygame.sprite.Sprite):
         ver_en = player.rect.y - blackhole.rect.y
         v_en = normalize_vector([hor_en, ver_en])
         if (pygame.sprite.spritecollide(player, enemy_group, False)):
-            print(f"Collision detected: Vector{v_en}") #TODO
+            print(f"Collision detected--Vector: {v_en}") #TODO
         if r < 150:
-            print(f"Distance to bh: {r} , Direction :{v_bh}")
+            print(f"Distance to bh: {r} , Direction:{v_bh}")
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, img, pos_x, pos_y, speed_x, speed_y):
