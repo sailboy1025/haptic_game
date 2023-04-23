@@ -1,24 +1,35 @@
 import pygame, sys, random, math
 from pygame.locals import *
-
+from haptic_helper import arduino_read, normalize_vector
+import threading
 class Player(pygame.sprite.Sprite):
-    def __init__(self, img):
+    def __init__(self, img, pos_x, pos_y):
         super().__init__()
         self.image = pygame.image.load(img)
         self.image = pygame.transform.scale(self.image, SIZE)
         self.rect = self.image.get_rect()
+        self.rect.center = [pos_x, pos_y]
+        self.pos_x = pos_x
+        self.pos_y = pos_y
         self.fire_sound = pygame.mixer.Sound('art/SHOOT011.mp3')
     def fire(self):
         self.fire_sound.play()
         return Bullet(bullet_src, self.rect.center[0], self.rect.center[1])
     def update(self) -> None:
-        self.rect.center = pygame.mouse.get_pos()
+        self.rect.center = [self.pos_x, self.pos_y]
         r = round(math.sqrt((player.rect.x - blackhole.rect.x) ** 2 + (player.rect.y - blackhole.rect.y) ** 2))
+        #vector between player and blackhole
+        hor_bh = player.rect.x - blackhole.rect.x
+        ver_bh = player.rect.y - blackhole.rect.y
+        v_bh = normalize_vector([hor_bh, ver_bh])
+        #vector between player and enemy
+        hor_en = player.rect.x - blackhole.rect.x
+        ver_en = player.rect.y - blackhole.rect.y
+        v_en = normalize_vector([hor_en, ver_en])
         if (pygame.sprite.spritecollide(player, enemy_group, False)):
-            print("Collision detected") #TODO
-            print(r)
+            print(f"Collision detected: Vector{v_en}") #TODO
         if r < 150:
-            print(f"Distance to bh: {r}")
+            print(f"Distance to bh: {r} , Direction :{v_bh}")
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, img, pos_x, pos_y, speed_x, speed_y):
@@ -59,7 +70,7 @@ class Bullet(pygame.sprite.Sprite):
     
     
     def update(self):
-        self.rect.y -= 0.51
+        self.rect.y -= 5
         if self.rect.y <= 0 + 10 or pygame.sprite.spritecollide(bullet, enemy_group, True):
             self.kill()
 
@@ -103,7 +114,8 @@ pygame.mouse.set_visible(False)
 
 
 #spawn player
-player = Player(player_src)
+pos_ar = [512, 512]
+player = Player(player_src, pos_ar[0], pos_ar[1])
 player_group = pygame.sprite.Group()
 player_group.add(player)
 
@@ -119,8 +131,16 @@ bullet_group = pygame.sprite.Group()
 blackhole = Blackhole(random.randrange(0, screen_w), random.randrange(0, screen_h))
 blackhole_group = pygame.sprite.Group()
 blackhole_group.add(blackhole)
+#Thread for serial
+t = threading.Thread(target=arduino_read, args=(pos_ar,), daemon=True)
+t.start()
+
 #main loop
 while True:
+    # Uncomment this for position control
+    player.pos_x = pos_ar[0]+100
+    player.pos_y = pos_ar[1]+100
+    # print(f'x: {pos_ar[0]}, y:{pos_ar[1]}')
     for even in pygame.event.get():
         if even.type == pygame.QUIT:
             pygame.quit()
@@ -139,4 +159,4 @@ while True:
     enemy_group.update()
     bullet_group.update()
     pygame.display.flip()
-    clock.tick(30)
+    clock.tick(60)
