@@ -18,6 +18,7 @@ class Player(pygame.sprite.Sprite):
     def update(self) -> None:
         self.rect.center = [self.pos_x, self.pos_y]
         r = math.sqrt((player.rect.x - blackhole.rect.x) ** 2 + (player.rect.y - blackhole.rect.y) ** 2)
+        r_to_earth = math.sqrt((player.rect.x - earth.rect.x) ** 2 + (player.rect.y - earth.rect.y) ** 2)
         #vector between player and blackhole
         hor_bh = player.rect.x - blackhole.rect.x
         ver_bh = player.rect.y - blackhole.rect.y
@@ -25,15 +26,22 @@ class Player(pygame.sprite.Sprite):
         force_bh = normalize_vector([hor_bh, ver_bh])
         force_bh[0] = -force_bh[0] * k / (r ** 2)
         force_bh[1] = -force_bh[1] * k / (r ** 2)
-        #vector between player and enemy
+        # vector between player and enemy
         hor_en = player.rect.x - blackhole.rect.x
         ver_en = player.rect.y - blackhole.rect.y
         v_en = normalize_vector([hor_en, ver_en])
+        # haptic effect
+        # with ufo
         if (pygame.sprite.spritecollide(player, enemy_group, False)):
-            print(f"Collision detected--Vector: {v_en}") #TODO
-        if r < 150:
-            print(f"force produced by blackhole: {force_bh}")
-
+            hc.arduino_write(v_en[0],  v_en[1])
+            # print(f"Collision detected--Vector: {v_en}") 
+        # with blackhole
+        if r < 200:
+            hc.arduino_write(force_bh[0],  force_bh[1])
+            # print(f"force produced by blackhole: {force_bh}")
+        # with earth
+        if r_to_earth < 200:
+            hc.arduino_write(damp = 1.5)
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, speed_x, speed_y):
         super().__init__()
@@ -59,9 +67,9 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.x += self.speed_x
         self.rect.y += self.speed_y
         #TODO limited inside screen
-        if self.rect.right >= screen_w or self.rect.left <= 1:
+        if self.rect.right >= screen_w - 100 or self.rect.left <= 1:
             self.speed_x *= -1
-        if self.rect.bottom >= screen_h or self.rect.top <= 1:
+        if self.rect.bottom >= screen_h - 100 or self.rect.top <= 1:
             self.speed_y *= -1
         if pygame.sprite.spritecollide(player, enemy_group, False):    
             if abs(self.rect.right - player.rect.left) < collision_forgive and self.speed_x > 0\
@@ -175,16 +183,17 @@ def main():
     #main loop
     while True:
         # Uncomment this for position control
-        player.pos_x = pos_ar[0]+100
-        player.pos_y = pos_ar[1]+100
+        player.pos_x = pos_ar[0]
+        player.pos_y = pos_ar[1] - 500 # Some offset to match the screen
+
         # print(f'x: {pos_ar[0]}, y:{pos_ar[1]}')
         for even in pygame.event.get():
             if even.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            # if even.type == pygame.MOUSEBUTTONDOWN:
-            #     bullet = player.fire()
-            #     bullet_group.add(bullet)
+            if even.type == pygame.MOUSEBUTTONDOWN:
+                bullet = player.fire()
+                bullet_group.add(bullet)
         # trigger effect
         if pos_ar[2] == 1:
             bullet = player.fire()
