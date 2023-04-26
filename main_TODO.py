@@ -1,6 +1,6 @@
 import pygame, sys, random, math
 from pygame.locals import *
-from haptic_helper import arduino_read, normalize_vector
+from haptic_helper import HapkitCommute, normalize_vector
 import threading
 class Player(pygame.sprite.Sprite):
     def __init__(self, img, pos_x, pos_y):
@@ -17,11 +17,14 @@ class Player(pygame.sprite.Sprite):
         return Bullet(bullet_src, self.rect.center[0], self.rect.center[1])
     def update(self) -> None:
         self.rect.center = [self.pos_x, self.pos_y]
-        r = round(math.sqrt((player.rect.x - blackhole.rect.x) ** 2 + (player.rect.y - blackhole.rect.y) ** 2))
+        r = math.sqrt((player.rect.x - blackhole.rect.x) ** 2 + (player.rect.y - blackhole.rect.y) ** 2)
         #vector between player and blackhole
         hor_bh = player.rect.x - blackhole.rect.x
         ver_bh = player.rect.y - blackhole.rect.y
-        v_bh = normalize_vector([hor_bh, ver_bh])
+        k = 1000
+        force_bh = normalize_vector([hor_bh, ver_bh])
+        force_bh[0] = -force_bh[0] * k / (r ** 2)
+        force_bh[1] = -force_bh[1] * k / (r ** 2)
         #vector between player and enemy
         hor_en = player.rect.x - blackhole.rect.x
         ver_en = player.rect.y - blackhole.rect.y
@@ -29,7 +32,7 @@ class Player(pygame.sprite.Sprite):
         if (pygame.sprite.spritecollide(player, enemy_group, False)):
             print(f"Collision detected--Vector: {v_en}") #TODO
         if r < 150:
-            print(f"Distance to bh: {r} , Direction:{v_bh}")
+            print(f"force produced by blackhole: {force_bh}")
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y, speed_x, speed_y):
@@ -143,7 +146,7 @@ pygame.mouse.set_visible(False)
 
 
 #spawn player
-pos_ar = [512, 512]
+pos_ar = [512, 512, 0]
 player = Player(player_src, pos_ar[0], pos_ar[1])
 player_group = pygame.sprite.Group()
 player_group.add(player)
@@ -157,18 +160,18 @@ for i in range(15):
 #spawn bullet
 bullet_group = pygame.sprite.Group()
 #spawn blackhole
-blackhole = Blackhole(200, 200)
+blackhole = Blackhole(200, 800)
 blackhole_group = pygame.sprite.Group()
 blackhole_group.add(blackhole)
 earth = Earth(800, 800)
 earth_group = pygame.sprite.Group()
 earth_group.add(earth)
+hc = HapkitCommute('COM5', 115200)
 #Thread for serial
 def main():
     global bullet
-    t = threading.Thread(target=arduino_read, args=(pos_ar,), daemon=True)
+    t = threading.Thread(target=hc.arduino_read, args=(pos_ar,), daemon=True)
     t.start()
-
     #main loop
     while True:
         # Uncomment this for position control
@@ -179,10 +182,13 @@ def main():
             if even.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
-            if even.type == pygame.MOUSEBUTTONDOWN:
-                bullet = player.fire()
-                bullet_group.add(bullet)
-        
+            # if even.type == pygame.MOUSEBUTTONDOWN:
+            #     bullet = player.fire()
+            #     bullet_group.add(bullet)
+        # trigger effect
+        if pos_ar[2] == 1:
+            bullet = player.fire()
+            bullet_group.add(bullet)
         screen.blit(background, (0,0))
         blackhole_group.draw(screen)
         earth_group.draw(screen)
