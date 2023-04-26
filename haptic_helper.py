@@ -28,9 +28,14 @@ class HapkitCommute:
                 # print(x_ar, y_ar)
             except:
                 pass
-    def arduino_write(self, force_x, force_y, damp = 0, ):
-                
-        pass
+    def arduino_write(self, force_x = 0, force_y = 0, damp = 1):
+        try:
+            py_msg = str(force_x) + ',' + str(force_y) + ',' + str(damp)
+            self.arduino.write(py_msg.encode('UTF-8'))
+            print(f'{py_msg} is successfully sent to port')
+        except:
+            print('Something Wrong')
+            pass
 def normalize_vector(vector):
     x, y = vector[0], vector[1]
     magnitude = math.sqrt(x**2 + y**2)
